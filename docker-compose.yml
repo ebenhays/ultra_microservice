@@ -1,0 +1,65 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:14.1-alpine
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - '5432:5432'
+    volumes:
+      - db:/var/lib/postgresql/data
+
+  microservice_backend:
+    container_name: microservice-backend
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      POSTGRES_DB_HOST: db
+      POSTGRES_DB_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    build:
+      context: ./microservice-backend
+    image: microservice-backend
+    depends_on:
+      - db
+    ports:
+      - 5000:5000
+    links:
+      - db
+    volumes:
+      - './microservice-backend:/usr/src/app/'
+      - /usr/src/app/node_modules
+
+  microservice_client:
+    container_name: microservice-client
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      GAME_SERVICE_HOST: ${GAME_SERVICE_HOST}
+      GAME_SERVICE_PORT: ${GAME_SERVICE_PORT}
+      PUBLISHER_SERVICE_HOST: ${PUBLISHER_SERVICE_HOST}
+      PUBLISHER_SERVICE_PORT: ${PUBLISHER_SERVICE_HOST}
+    build:
+      context: ./microservice-client
+    image: microservice-client
+    depends_on:
+      - microservice_backend
+    ports:
+      - 3000:3000
+    links:
+      - microservice_backend
+    volumes:
+      - './microservice-client:/usr/src/app/'
+      - /usr/src/app/node_modules
+volumes:
+  db:
+    driver: local
